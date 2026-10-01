@@ -20,6 +20,7 @@
 ## 문서
 
 - [PRD.md](PRD.md): 배경과 목표, 기능 요구사항, 데이터 모델, 화면 구성, 성공 기준, 열린 질문
+- [PROMPTS.md](PROMPTS.md): PRD를 Claude Code에서 구현하기 위한 5단계 프롬프트
 
 ## 상태
 
