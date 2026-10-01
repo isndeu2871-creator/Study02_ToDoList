@@ -107,6 +107,7 @@
 
   <form class="카드 입력줄" id="입력폼">
     <input type="text" id="새내용" placeholder="할 일을 입력하세요" aria-label="새 할 일" autocomplete="off">
+    <select id="새분류" aria-label="카테고리"></select>
     <button type="submit">추가</button>
   </form>
 
@@ -118,9 +119,11 @@
 <script>
   // ---------- 상수 ----------
   const 저장키 = "todos";
+  const 분류들 = ["업무", "개인", "공부"];
 
   // ---------- 상태 ----------
   let 할일들 = 불러오기();
+  let 수정중아이디 = null; // 한 번에 한 항목만 수정한다
 
   // ---------- 1. 저장·불러오기 ----------
   // 값이 없거나 JSON 이 깨졌거나 배열이 아니면 빈 목록으로 시작한다.
@@ -128,10 +131,13 @@
     try {
       const 원본 = JSON.parse(localStorage.getItem(저장키));
       if (!Array.isArray(원본)) return [];
-      return 원본.filter(항목 =>
-        항목 && typeof 항목.id === "string" && typeof 항목.text === "string" &&
-        typeof 항목.done === "boolean"
-      );
+      // 필드가 맞지 않는 항목은 버리고, 카테고리가 없거나 낯선 값이면 "업무"로 보정한다.
+      return 원본
+        .filter(항목 =>
+          항목 && typeof 항목.id === "string" && typeof 항목.text === "string" &&
+          typeof 항목.done === "boolean"
+        )
+        .map(항목 => ({ ...항목, category: 분류들.includes(항목.category) ? 항목.category : 분류들[0] }));
     } catch (오류) {
       return [];
     }
@@ -153,10 +159,22 @@
       (새아이디.순번 = (새아이디.순번 || 0) + 1).toString(36);
   }
 
-  function 추가하기(내용) {
+  function 추가하기(내용, 분류) {
     const 정리 = 내용.trim();
     if (!정리) return false;
-    할일들.push({ id: 새아이디(), text: 정리, category: "업무", done: false, createdAt: Date.now() });
+    할일들.push({ id: 새아이디(), text: 정리, category: 분류, done: false, createdAt: Date.now() });
+    변경됨();
+    return true;
+  }
+
+  // id, done, createdAt 은 건드리지 않고 내용과 카테고리만 바꾼다.
+  function 수정하기(아이디, 내용, 분류) {
+    const 정리 = 내용.trim();
+    if (!정리) return false;
+    const 항목 = 할일들.find(x => x.id === 아이디);
+    if (!항목) return false;
+    항목.text = 정리;
+    항목.category = 분류;
     변경됨();
     return true;
   }
@@ -164,6 +182,7 @@
   function 삭제하기(아이디) {
     if (!confirm("이 할 일을 삭제할까요?")) return;
     할일들 = 할일들.filter(x => x.id !== 아이디);
+    if (수정중아이디 === 아이디) 수정중아이디 = null;
     변경됨();
   }
 
@@ -198,7 +217,19 @@
       목록.appendChild(만들기("li", { class: "빈목록" }, "할 일이 없습니다"));
       return;
     }
-    for (const 항목 of 할일들) 목록.appendChild(보기줄만들기(항목));
+    for (const 항목 of 할일들) {
+      목록.appendChild(항목.id === 수정중아이디 ? 수정줄만들기(항목) : 보기줄만들기(항목));
+    }
+  }
+
+  function 분류선택칸만들기(선택값) {
+    const 칸 = 만들기("select", { "aria-label": "카테고리" });
+    for (const 분류 of 분류들) {
+      const 옵션 = 만들기("option", { value: 분류 }, 분류);
+      if (분류 === 선택값) 옵션.selected = true;
+      칸.appendChild(옵션);
+    }
+    return 칸;
   }
 
   function 보기줄만들기(항목) {
@@ -209,18 +240,59 @@
     체크.addEventListener("change", () => 완료바꾸기(항목.id));
 
     const 내용 = 만들기("span", { class: "내용" }, 항목.text);
+    내용.addEventListener("dblclick", () => 수정시작(항목.id));
+
+    const 배지 = 만들기("span", { class: "배지 " + 항목.category }, 항목.category);
+    const 수정 = 만들기("button", { type: "button", class: "보조", "aria-label": "수정" }, "수정");
+    수정.addEventListener("click", () => 수정시작(항목.id));
     const 삭제 = 만들기("button", { type: "button", class: "보조", "aria-label": "삭제" }, "삭제");
     삭제.addEventListener("click", () => 삭제하기(항목.id));
 
-    줄.append(체크, 내용, 삭제);
+    줄.append(체크, 내용, 배지, 수정, 삭제);
     return 줄;
   }
 
+  function 수정줄만들기(항목) {
+    const 줄 = 만들기("li", { class: "항목 수정중" });
+    const 입력 = 만들기("input", { type: "text", "aria-label": "할 일 수정", autocomplete: "off" });
+    입력.value = 항목.text;
+    const 분류칸 = 분류선택칸만들기(항목.category);
+
+    // 빈 내용이면 저장하지 않고 수정 상태를 유지한다.
+    const 저장 = () => {
+      if (수정하기(항목.id, 입력.value, 분류칸.value)) 수정중아이디 = null;
+      그리기();
+    };
+    const 취소 = () => { 수정중아이디 = null; 그리기(); };
+
+    입력.addEventListener("keydown", (이벤트) => {
+      if (이벤트.key === "Enter") { 이벤트.preventDefault(); 저장(); }
+      else if (이벤트.key === "Escape") 취소();
+    });
+
+    const 저장버튼 = 만들기("button", { type: "button" }, "저장");
+    저장버튼.addEventListener("click", 저장);
+    const 취소버튼 = 만들기("button", { type: "button", class: "보조" }, "취소");
+    취소버튼.addEventListener("click", 취소);
+
+    줄.append(입력, 분류칸, 저장버튼, 취소버튼);
+    queueMicrotask(() => 입력.focus());
+    return 줄;
+  }
+
+  function 수정시작(아이디) {
+    수정중아이디 = 아이디;
+    그리기();
+  }
+
   // ---------- 4. 이벤트 연결 ----------
+  const 새분류칸 = document.getElementById("새분류");
+  for (const 분류 of 분류들) 새분류칸.appendChild(만들기("option", { value: 분류 }, 분류));
+
   document.getElementById("입력폼").addEventListener("submit", (이벤트) => {
     이벤트.preventDefault();
     const 입력 = document.getElementById("새내용");
-    if (추가하기(입력.value)) 입력.value = "";
+    if (추가하기(입력.value, 새분류칸.value)) 입력.value = "";
     입력.focus();
   });
 
