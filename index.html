@@ -150,7 +150,8 @@
 
 <script>
   // ---------- 상수 ----------
-  const 저장키 = "todos";
+  const 저장키 = "todoApp.v1";
+  const 이전저장키 = "todos"; // 이전 형식(배열). 새 키가 비어 있을 때만 한 번 읽어 와서 옮긴다.
   const 분류들 = ["업무", "개인", "공부"];
 
   // ---------- 상태 ----------
@@ -159,11 +160,19 @@
   let 현재탭 = "전체";
 
   // ---------- 1. 저장·불러오기 ----------
-  // 값이 없거나 JSON 이 깨졌거나 배열이 아니면 빈 목록으로 시작한다.
+  // 저장 형식은 { version: 1, todos: [...] } 이다.
+  function 원본목록읽기() {
+    const 새값 = JSON.parse(localStorage.getItem(저장키));
+    if (새값 && 새값.version === 1 && Array.isArray(새값.todos)) return 새값.todos;
+    if (새값 !== null) return []; // 새 키가 있는데 형식이 낯설면 빈 목록으로 시작한다.
+    const 옛값 = JSON.parse(localStorage.getItem(이전저장키));
+    return Array.isArray(옛값) ? 옛값 : [];
+  }
+
+  // 값이 없거나 JSON 이 깨졌거나 형식이 맞지 않으면 빈 목록으로 시작한다.
   function 불러오기() {
     try {
-      const 원본 = JSON.parse(localStorage.getItem(저장키));
-      if (!Array.isArray(원본)) return [];
+      const 원본 = 원본목록읽기();
       // 필드가 맞지 않는 항목은 버리고, 카테고리가 없거나 낯선 값이면 "업무"로 보정한다.
       return 원본
         .filter(항목 =>
@@ -179,7 +188,7 @@
   // 저장소를 쓸 수 없는 환경(사생활 보호 모드 등)에서는 메모리에서만 동작한다.
   function 저장하기() {
     try {
-      localStorage.setItem(저장키, JSON.stringify(할일들));
+      localStorage.setItem(저장키, JSON.stringify({ version: 1, todos: 할일들 }));
     } catch (오류) {
       // 무시
     }
