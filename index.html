@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>할 일 관리</title>
+<style>
+  :root {
+    --배경: #f4f5f7;
+    --카드: #ffffff;
+    --글자: #1f2430;
+    --흐린글자: #8a90a0;
+    --선: #e3e5ea;
+    --주색: #3b6cf6;
+    --업무: #3b6cf6;
+    --개인: #e8833a;
+    --공부: #2fa56b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 48px;
+    background: var(--배경);
+    color: var(--글자);
+    font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+  }
+  main { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 16px; }
+
+  .카드 {
+    background: var(--카드);
+    border: 1px solid var(--선);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  .진행률글자 { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; }
+  .진행률막대 { height: 10px; background: var(--선); border-radius: 5px; overflow: hidden; }
+  .진행률막대 > div { height: 100%; width: 0; background: var(--주색); transition: width .25s; }
+
+  .탭줄 { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .탭 {
+    border: 1px solid var(--선);
+    background: var(--카드);
+    color: var(--글자);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .탭[aria-pressed="true"] { background: var(--주색); border-color: var(--주색); color: #fff; }
+
+  form.입력줄 { display: flex; gap: 8px; flex-wrap: wrap; }
+  input[type="text"], select {
+    font: inherit;
+    color: var(--글자);
+    background: var(--배경);
+    border: 1px solid var(--선);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  form.입력줄 input[type="text"] { flex: 1 1 200px; min-width: 0; }
+  button {
+    font: inherit;
+    border: 0;
+    border-radius: 8px;
+    padding: 8px 14px;
+    background: var(--주색);
+    color: #fff;
+    cursor: pointer;
+  }
+  button.보조 { background: transparent; color: var(--흐린글자); border: 1px solid var(--선); padding: 4px 10px; font-size: 13px; }
+  button.보조:hover { color: var(--글자); }
+  :focus-visible { outline: 2px solid var(--주색); outline-offset: 2px; }
+
+  ul { list-style: none; margin: 0; padding: 0; }
+  li.항목 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--선);
+  }
+  li.항목:last-child { border-bottom: 0; }
+  li.항목 input[type="checkbox"] { width: 18px; height: 18px; flex: none; }
+  .내용 { flex: 1; min-width: 0; word-break: break-word; cursor: text; }
+  li.완료 .내용 { text-decoration: line-through; color: var(--흐린글자); }
+  .배지 { font-size: 12px; color: #fff; padding: 2px 8px; border-radius: 999px; flex: none; }
+  .배지.업무 { background: var(--업무); }
+  .배지.개인 { background: var(--개인); }
+  .배지.공부 { background: var(--공부); }
+  li.수정중 { flex-wrap: wrap; }
+  li.수정중 input[type="text"] { flex: 1 1 160px; min-width: 0; }
+
+  .빈목록 { text-align: center; color: var(--흐린글자); padding: 24px 0; }
+  .아래줄 { display: flex; justify-content: flex-end; margin-top: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>할 일 관리</h1>
+
+  <section class="카드" aria-label="진행률" id="진행률영역"></section>
+
+  <div class="탭줄" id="탭줄" aria-label="카테고리 탭"></div>
+
+  <form class="카드 입력줄" id="입력폼"></form>
+
+  <section class="카드" aria-label="할 일 목록">
+    <ul id="목록"></ul>
+  </section>
+</main>
+
+<script>
+  // ---------- 상수 ----------
+  const 저장키 = "todos";
+
+  // ---------- 상태 ----------
+  let 할일들 = 불러오기();
+
+  // ---------- 1. 저장·불러오기 ----------
+  // 값이 없거나 JSON 이 깨졌거나 배열이 아니면 빈 목록으로 시작한다.
+  function 불러오기() {
+    try {
+      const 원본 = JSON.parse(localStorage.getItem(저장키));
+      if (!Array.isArray(원본)) return [];
+      return 원본.filter(항목 =>
+        항목 && typeof 항목.id === "string" && typeof 항목.text === "string" &&
+        typeof 항목.done === "boolean"
+      );
+    } catch (오류) {
+      return [];
+    }
+  }
+
+  // 저장소를 쓸 수 없는 환경(사생활 보호 모드 등)에서는 메모리에서만 동작한다.
+  function 저장하기() {
+    try {
+      localStorage.setItem(저장키, JSON.stringify(할일들));
+    } catch (오류) {
+      // 무시
+    }
+  }
+
+  // ---------- 2. 상태 변경 ----------
+  // (다음 단계에서 채운다)
+
+  // ---------- 3. 화면 그리기 ----------
+  // 사용자 입력은 textContent 로만 넣는다.
+  function 만들기(태그, 속성 = {}, 글자 = "") {
+    const 요소 = document.createElement(태그);
+    for (const [키, 값] of Object.entries(속성)) {
+      if (키 === "class") 요소.className = 값;
+      else 요소.setAttribute(키, 값);
+    }
+    if (글자) 요소.textContent = 글자;
+    return 요소;
+  }
+
+  function 그리기() {
+    const 목록 = document.getElementById("목록");
+    목록.replaceChildren();
+    if (할일들.length === 0) {
+      목록.appendChild(만들기("li", { class: "빈목록" }, "할 일이 없습니다"));
+    }
+  }
+
+  // ---------- 4. 이벤트 연결 ----------
+  // (다음 단계에서 채운다)
+
+  그리기();
+</script>
+</body>
+</html>
