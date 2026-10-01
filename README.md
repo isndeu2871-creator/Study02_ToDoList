@@ -6,13 +6,10 @@
 
 ## 실행
 
-**https://isndeu2871-creator.github.io/Study02_ToDoList/**
+- **신 버전 (데스크톱 2단)**: https://isndeu2871-creator.github.io/Study02_ToDoList/
+- **구 버전 (한 줄 배치)**: https://isndeu2871-creator.github.io/Study02_ToDoList/mobile_version/
 
-넓은 화면에서는 왼쪽에 진행률과 탭, 입력칸을 모은 사이드를 두고 오른쪽에 목록을 보여 준다. 창을 좁히면 한 줄 배치로 바뀐다.
-
-처음 만든 한 줄 배치 버전도 남겨 두었다.
-
-- **https://isndeu2871-creator.github.io/Study02_ToDoList/mobile_version/** — 한 줄 배치
+루트가 신 버전이다. 넓은 화면에서는 왼쪽에 진행률과 탭, 입력칸을 모은 사이드를 두고 오른쪽에 목록을 보여 준다. 창을 좁히면 한 줄 배치로 바뀐다. `mobile_version/`은 처음 만든 한 줄 배치 화면을 그대로 남겨 둔 것이다.
 
 내려받아 쓰려면 [index.html](index.html) 하나만 있으면 된다. 파일을 브라우저로 열면 그대로 실행된다. 설치할 것도, 띄울 서버도 없다.
 
@@ -31,18 +28,27 @@
 - HTML 하나에 CSS와 자바스크립트를 같이 담는다.
   - [index.html](index.html) — 데스크톱 2단 배치
   - [mobile_version/index.html](mobile_version/index.html) — 처음 만든 한 줄 배치
-- 두 파일의 자바스크립트는 같다. 배치를 바꾸면서 마크업과 CSS만 손봤다.
+- 두 파일의 자바스크립트는 같고, HTML(마크업)과 CSS만 다르다. 배치를 바꾸면서 이 둘만 손봤다.
 - 상태 변경은 언제나 `배열 변경 → 저장하기() → 그리기()` 순서로만 일어난다. DOM을 부분적으로 고치지 않아 화면과 데이터가 어긋나지 않는다.
 
 ## 데이터
 
-localStorage 키 `todoApp.v1`에 JSON 문자열 하나로 저장한다. 값은 `{ version: 1, todos: [...] }` 형태다. 브라우저를 벗어나지 않으며 어디로도 전송되지 않는다. 브라우저마다 저장소가 따로이므로, 크롬에서 적은 할 일은 사파리에서 보이지 않는다. 두 버전은 같은 주소(`isndeu2871-creator.github.io`)에서 돌아가므로 저장소를 공유한다. 한쪽에서 적은 할 일이 다른 쪽에도 보인다.
+localStorage 키 `todoApp.v1`에 JSON 문자열 하나로 저장한다. 값은 `{ version: 1, todos: [...] }` 형태다. 브라우저를 벗어나지 않으며 어디로도 전송되지 않는다. 브라우저마다 저장소가 따로이므로, 크롬에서 적은 할 일은 사파리에서 보이지 않는다.
 
 저장된 값은 개발자 도구(윈도우 `F12`, 맥 `Cmd+Option+I`)의 Console에서 확인한다. 할 일을 하나 이상 추가한 뒤 아래를 실행한다. 값이 `null`이면 그 주소에 아직 저장된 값이 없다는 뜻이다.
 
 ```js
 JSON.parse(localStorage.getItem("todoApp.v1"))
 ```
+
+### 저장소 공유와 오리진
+
+신 버전과 구 버전은 **같은 오리진(origin)**이라 localStorage를 공유한다. 한쪽에서 적은 할 일이 다른 쪽에도 그대로 보인다.
+
+- 오리진은 브라우저가 사이트를 서로 구분하는 단위다.
+- 같은 오리진의 페이지끼리만 localStorage 같은 데이터를 함께 쓴다. 다른 오리진의 데이터에는 접근할 수 없다.
+- 오리진은 주소에서 프로토콜, 호스트, 포트까지를 합친 부분이다. 이 앱은 `https://isndeu2871-creator.github.io`다.
+- 뒤의 경로(`/Study02_ToDoList/`, `/mobile_version/`)가 달라도 오리진은 같다.
 
 ## 문서
 
