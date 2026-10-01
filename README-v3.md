@@ -37,11 +37,3 @@ localStorage 키 `todos`에 JSON 배열로 저장한다. 브라우저를 벗어�
 - [PROMPTS.md](PROMPTS.md) — PRD를 클로드 코드에서 실행할 5단계 프롬프트로 나눈 것
 
 커밋 이력이 PROMPTS.md의 5단계와 하나씩 대응한다. `git log`를 거꾸로 따라가면 뼈대부터 완성까지 순서대로 볼 수 있다.
-
-## 이전 버전의 README
-
-각 시점의 저장소 구성을 보존한다.
-
-- [README-v1.md](README-v1.md) — PRD만 있던 시점
-- [README-v2.md](README-v2.md) — PRD와 구현 계획까지 끝난 시점
-- [README-v3.md](README-v3.md) — 구현은 끝났고 배포 전인 시점
