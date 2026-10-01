@@ -42,4 +42,3 @@ PRD의 기능 요구사항 F1~F9를 구현했고, 자동 검사(Playwright)로 �
 
 - [README-v1.md](README-v1.md) — PRD만 있던 시점
 - [README-v2.md](README-v2.md) — PRD와 구현 계획까지 끝난 시점
-- [README-v3.md](README-v3.md) — 구현은 끝났고 배포 전인 시점
