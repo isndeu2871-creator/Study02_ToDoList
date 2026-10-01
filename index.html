@@ -16,6 +16,15 @@
     --개인: #e8833a;
     --공부: #2fa56b;
   }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --배경: #14161c;
+      --카드: #1d2029;
+      --글자: #e8eaf0;
+      --흐린글자: #7d8396;
+      --선: #2b2f3b;
+    }
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
@@ -121,6 +130,7 @@
 
   <section class="카드" aria-label="할 일 목록">
     <ul id="목록"></ul>
+    <div class="아래줄"><button type="button" class="보조" id="완료삭제">완료 항목 지우기</button></div>
   </section>
 </main>
 
@@ -131,6 +141,7 @@
 
   // ---------- 상태 ----------
   let 할일들 = 불러오기();
+  let 수정중아이디 = null; // 한 번에 한 항목만 수정한다
   let 현재탭 = "전체";
 
   // ---------- 1. 저장·불러오기 ----------
@@ -175,9 +186,22 @@
     return true;
   }
 
+  // id, done, createdAt 은 건드리지 않고 내용과 카테고리만 바꾼다.
+  function 수정하기(아이디, 내용, 분류) {
+    const 정리 = 내용.trim();
+    if (!정리) return false;
+    const 항목 = 할일들.find(x => x.id === 아이디);
+    if (!항목) return false;
+    항목.text = 정리;
+    항목.category = 분류;
+    변경됨();
+    return true;
+  }
+
   function 삭제하기(아이디) {
     if (!confirm("이 할 일을 삭제할까요?")) return;
     할일들 = 할일들.filter(x => x.id !== 아이디);
+    if (수정중아이디 === 아이디) 수정중아이디 = null;
     변경됨();
   }
 
@@ -185,6 +209,15 @@
     const 항목 = 할일들.find(x => x.id === 아이디);
     if (!항목) return;
     항목.done = !항목.done;
+    변경됨();
+  }
+
+  function 완료지우기() {
+    const 개수 = 할일들.filter(x => x.done).length;
+    if (개수 === 0) return;
+    if (!confirm(`완료한 ${개수}개를 지울까요?`)) return;
+    할일들 = 할일들.filter(x => !x.done);
+    if (!할일들.some(x => x.id === 수정중아이디)) 수정중아이디 = null;
     변경됨();
   }
 
@@ -235,7 +268,7 @@
     탭줄.replaceChildren();
     for (const 이름 of ["전체", ...분류들]) {
       const 탭 = 만들기("button", { type: "button", class: "탭", "aria-pressed": String(이름 === 현재탭) }, 이름);
-      탭.addEventListener("click", () => { 현재탭 = 이름; 그리기(); });
+      탭.addEventListener("click", () => { 현재탭 = 이름; 수정중아이디 = null; 그리기(); });
       탭줄.appendChild(탭);
     }
 
@@ -246,7 +279,19 @@
       목록.appendChild(만들기("li", { class: "빈목록" }, "할 일이 없습니다"));
       return;
     }
-    for (const 항목 of 보이는목록) 목록.appendChild(보기줄만들기(항목));
+    for (const 항목 of 보이는목록) {
+      목록.appendChild(항목.id === 수정중아이디 ? 수정줄만들기(항목) : 보기줄만들기(항목));
+    }
+  }
+
+  function 분류선택칸만들기(선택값) {
+    const 칸 = 만들기("select", { "aria-label": "카테고리" });
+    for (const 분류 of 분류들) {
+      const 옵션 = 만들기("option", { value: 분류 }, 분류);
+      if (분류 === 선택값) 옵션.selected = true;
+      칸.appendChild(옵션);
+    }
+    return 칸;
   }
 
   function 보기줄만들기(항목) {
@@ -257,18 +302,56 @@
     체크.addEventListener("change", () => 완료바꾸기(항목.id));
 
     const 내용 = 만들기("span", { class: "내용" }, 항목.text);
+    내용.addEventListener("dblclick", () => 수정시작(항목.id));
 
     const 배지 = 만들기("span", { class: "배지 " + 항목.category }, 항목.category);
+    const 수정 = 만들기("button", { type: "button", class: "보조", "aria-label": "수정" }, "수정");
+    수정.addEventListener("click", () => 수정시작(항목.id));
     const 삭제 = 만들기("button", { type: "button", class: "보조", "aria-label": "삭제" }, "삭제");
     삭제.addEventListener("click", () => 삭제하기(항목.id));
 
-    줄.append(체크, 내용, 배지, 삭제);
+    줄.append(체크, 내용, 배지, 수정, 삭제);
     return 줄;
+  }
+
+  function 수정줄만들기(항목) {
+    const 줄 = 만들기("li", { class: "항목 수정중" });
+    const 입력 = 만들기("input", { type: "text", "aria-label": "할 일 수정", autocomplete: "off" });
+    입력.value = 항목.text;
+    const 분류칸 = 분류선택칸만들기(항목.category);
+
+    // 빈 내용이면 저장하지 않고 수정 상태를 유지한다.
+    const 저장 = () => {
+      if (수정하기(항목.id, 입력.value, 분류칸.value)) 수정중아이디 = null;
+      그리기();
+    };
+    const 취소 = () => { 수정중아이디 = null; 그리기(); };
+
+    입력.addEventListener("keydown", (이벤트) => {
+      if (이벤트.key === "Enter") { 이벤트.preventDefault(); 저장(); }
+      else if (이벤트.key === "Escape") 취소();
+    });
+
+    const 저장버튼 = 만들기("button", { type: "button" }, "저장");
+    저장버튼.addEventListener("click", 저장);
+    const 취소버튼 = 만들기("button", { type: "button", class: "보조" }, "취소");
+    취소버튼.addEventListener("click", 취소);
+
+    줄.append(입력, 분류칸, 저장버튼, 취소버튼);
+    queueMicrotask(() => 입력.focus());
+    return 줄;
+  }
+
+  function 수정시작(아이디) {
+    수정중아이디 = 아이디;
+    그리기();
   }
 
   // ---------- 4. 이벤트 연결 ----------
   const 새분류칸 = document.getElementById("새분류");
   for (const 분류 of 분류들) 새분류칸.appendChild(만들기("option", { value: 분류 }, 분류));
+
+  document.getElementById("완료삭제").addEventListener("click", 완료지우기);
 
   document.getElementById("입력폼").addEventListener("submit", (이벤트) => {
     이벤트.preventDefault();
