@@ -101,11 +101,11 @@
 <main>
   <h1>할 일 관리</h1>
 
-  <section class="카드" aria-label="진행률" id="진행률영역"></section>
-
-  <div class="탭줄" id="탭줄" aria-label="카테고리 탭"></div>
-
-  <form class="카드 입력줄" id="입력폼"></form>
+  <form class="카드 입력줄" id="입력폼">
+    <input type="text" id="새내용" placeholder="할 일을 입력하세요" aria-label="새 할 일" autocomplete="off">
+    <select id="새분류" aria-label="카테고리"></select>
+    <button type="submit">추가</button>
+  </form>
 
   <section class="카드" aria-label="할 일 목록">
     <ul id="목록"></ul>
@@ -115,6 +115,7 @@
 <script>
   // ---------- 상수 ----------
   const 저장키 = "todos";
+  const 분류들 = ["업무", "개인", "공부"];
 
   // ---------- 상태 ----------
   let 할일들 = 불러오기();
@@ -125,10 +126,13 @@
     try {
       const 원본 = JSON.parse(localStorage.getItem(저장키));
       if (!Array.isArray(원본)) return [];
-      return 원본.filter(항목 =>
-        항목 && typeof 항목.id === "string" && typeof 항목.text === "string" &&
-        typeof 항목.done === "boolean"
-      );
+      // 필드가 맞지 않는 항목은 버리고, 카테고리가 없거나 낯선 값이면 "업무"로 보정한다.
+      return 원본
+        .filter(항목 =>
+          항목 && typeof 항목.id === "string" && typeof 항목.text === "string" &&
+          typeof 항목.done === "boolean"
+        )
+        .map(항목 => ({ ...항목, category: 분류들.includes(항목.category) ? 항목.category : 분류들[0] }));
     } catch (오류) {
       return [];
     }
@@ -144,7 +148,24 @@
   }
 
   // ---------- 2. 상태 변경 ----------
-  // (다음 단계에서 채운다)
+  // 모든 변경은 변경됨() 을 거쳐 저장하고 다시 그린다.
+  function 새아이디() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8) +
+      (새아이디.순번 = (새아이디.순번 || 0) + 1).toString(36);
+  }
+
+  function 추가하기(내용, 분류) {
+    const 정리 = 내용.trim();
+    if (!정리) return false;
+    할일들.push({ id: 새아이디(), text: 정리, category: 분류, done: false, createdAt: Date.now() });
+    변경됨();
+    return true;
+  }
+
+  function 변경됨() {
+    저장하기();
+    그리기();
+  }
 
   // ---------- 3. 화면 그리기 ----------
   // 사용자 입력은 textContent 로만 넣는다.
@@ -163,11 +184,32 @@
     목록.replaceChildren();
     if (할일들.length === 0) {
       목록.appendChild(만들기("li", { class: "빈목록" }, "할 일이 없습니다"));
+      return;
     }
+    for (const 항목 of 할일들) 목록.appendChild(보기줄만들기(항목));
+  }
+
+  function 보기줄만들기(항목) {
+    const 줄 = 만들기("li", { class: "항목" });
+
+    const 내용 = 만들기("span", { class: "내용" }, 항목.text);
+
+    const 배지 = 만들기("span", { class: "배지 " + 항목.category }, 항목.category);
+
+    줄.append(내용, 배지);
+    return 줄;
   }
 
   // ---------- 4. 이벤트 연결 ----------
-  // (다음 단계에서 채운다)
+  const 새분류칸 = document.getElementById("새분류");
+  for (const 분류 of 분류들) 새분류칸.appendChild(만들기("option", { value: 분류 }, 분류));
+
+  document.getElementById("입력폼").addEventListener("submit", (이벤트) => {
+    이벤트.preventDefault();
+    const 입력 = document.getElementById("새내용");
+    if (추가하기(입력.value, 새분류칸.value)) 입력.value = "";
+    입력.focus();
+  });
 
   그리기();
 </script>
