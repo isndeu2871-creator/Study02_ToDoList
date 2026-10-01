@@ -6,6 +6,7 @@
 <title>할 일 관리</title>
 <style>
   :root {
+    color-scheme: light;
     --배경: #f4f5f7;
     --카드: #ffffff;
     --글자: #1f2430;
@@ -16,8 +17,18 @@
     --개인: #e8833a;
     --공부: #2fa56b;
   }
+  /* 다크 모드: 단추로 고르면 data-theme 이 붙고, 고른 적이 없으면 시스템 설정을 따른다. */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --배경: #14161c;
+    --카드: #1d2029;
+    --글자: #e8eaf0;
+    --흐린글자: #7d8396;
+    --선: #2b2f3b;
+  }
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
       --배경: #14161c;
       --카드: #1d2029;
       --글자: #e8eaf0;
@@ -34,7 +45,10 @@
     font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
   }
   main { max-width: 1100px; margin: 0 auto; }
-  h1 { font-size: 22px; margin: 0 0 16px; }
+  .머리 { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  h1 { font-size: 22px; margin: 0; }
+  .도구 { display: flex; gap: 8px; flex-wrap: wrap; }
+  .도구 button.보조 { padding: 6px 12px; color: var(--글자); }
 
   .카드 {
     background: var(--카드);
@@ -104,12 +118,14 @@
 
   /* 좁은 화면은 한 줄 배치(사이드가 위, 목록이 아래), 넓은 화면은 2단 */
   .화면 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+  /* 모바일 모드: 창이 넓어도 좁은 한 줄 배치로 보여 준다. */
+  :root[data-layout="mobile"] main { max-width: 480px; }
+  /* 웹 모드: 창이 넓을 때만 2단. 좁은 창에서는 한 줄로 내려간다. */
   @media (min-width: 900px) {
-    body { padding-top: 40px; }
-    .화면 { grid-template-columns: 340px minmax(0, 1fr); gap: 24px; align-items: start; }
-    .사이드 { position: sticky; top: 24px; }
-    .목록카드 { min-height: 480px; }
-    .사이드 .탭줄 { margin-bottom: 12px; }
+    :root:not([data-layout="mobile"]) body { padding-top: 40px; }
+    :root:not([data-layout="mobile"]) .화면 { grid-template-columns: 340px minmax(0, 1fr); gap: 24px; align-items: start; }
+    :root:not([data-layout="mobile"]) .사이드 { position: sticky; top: 24px; }
+    :root:not([data-layout="mobile"]) .목록카드 { min-height: 480px; }
   }
 
   .빈목록 { text-align: center; color: var(--흐린글자); padding: 24px 0; }
@@ -118,7 +134,13 @@
 </head>
 <body>
 <main>
-  <h1>할 일 관리</h1>
+  <header class="머리">
+    <h1>할 일 관리</h1>
+    <div class="도구">
+      <button type="button" class="보조" id="레이아웃버튼"></button>
+      <button type="button" class="보조" id="테마버튼"></button>
+    </div>
+  </header>
 
   <div class="화면">
   <aside class="사이드">
@@ -192,6 +214,45 @@
     } catch (오류) {
       // 무시
     }
+  }
+
+  // ---------- 보기 설정 (웹/모바일 모드, 라이트/다크 모드) ----------
+  // 할 일 데이터와는 별도 키에 저장한다. theme 이 null 이면 시스템 설정을 따른다.
+  const 설정키 = "todoApp.view";
+  let 보기 = 보기설정읽기();
+
+  function 보기설정읽기() {
+    try {
+      const 원본 = JSON.parse(localStorage.getItem(설정키));
+      return {
+        layout: 원본 && 원본.layout === "mobile" ? "mobile" : "web",
+        theme: 원본 && (원본.theme === "light" || 원본.theme === "dark") ? 원본.theme : null,
+      };
+    } catch (오류) {
+      return { layout: "web", theme: null };
+    }
+  }
+
+  function 보기설정저장() {
+    try {
+      localStorage.setItem(설정키, JSON.stringify(보기));
+    } catch (오류) {
+      // 무시
+    }
+  }
+
+  function 현재테마() {
+    if (보기.theme) return 보기.theme;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
+  function 보기적용() {
+    const 루트 = document.documentElement;
+    루트.dataset.layout = 보기.layout;
+    if (보기.theme) 루트.dataset.theme = 보기.theme;
+    else delete 루트.dataset.theme;
+    document.getElementById("레이아웃버튼").textContent = 보기.layout === "web" ? "모바일 모드로" : "웹 모드로";
+    document.getElementById("테마버튼").textContent = 현재테마() === "dark" ? "라이트 모드로" : "다크 모드로";
   }
 
   // ---------- 2. 상태 변경 ----------
@@ -376,6 +437,19 @@
 
   document.getElementById("완료삭제").addEventListener("click", 완료지우기);
 
+  document.getElementById("레이아웃버튼").addEventListener("click", () => {
+    보기.layout = 보기.layout === "web" ? "mobile" : "web";
+    보기설정저장();
+    보기적용();
+  });
+  document.getElementById("테마버튼").addEventListener("click", () => {
+    보기.theme = 현재테마() === "dark" ? "light" : "dark";
+    보기설정저장();
+    보기적용();
+  });
+  // 고른 적이 없으면 시스템 설정이 바뀔 때 단추 글자도 따라 바뀐다.
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", 보기적용);
+
   document.getElementById("입력폼").addEventListener("submit", (이벤트) => {
     이벤트.preventDefault();
     const 입력 = document.getElementById("새내용");
@@ -383,6 +457,7 @@
     입력.focus();
   });
 
+  보기적용();
   그리기();
 </script>
 </body>
