@@ -105,7 +105,10 @@
 
   <div class="탭줄" id="탭줄" aria-label="카테고리 탭"></div>
 
-  <form class="카드 입력줄" id="입력폼"></form>
+  <form class="카드 입력줄" id="입력폼">
+    <input type="text" id="새내용" placeholder="할 일을 입력하세요" aria-label="새 할 일" autocomplete="off">
+    <button type="submit">추가</button>
+  </form>
 
   <section class="카드" aria-label="할 일 목록">
     <ul id="목록"></ul>
@@ -144,7 +147,37 @@
   }
 
   // ---------- 2. 상태 변경 ----------
-  // (다음 단계에서 채운다)
+  // 모든 변경은 변경됨() 을 거쳐 저장하고 다시 그린다.
+  function 새아이디() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8) +
+      (새아이디.순번 = (새아이디.순번 || 0) + 1).toString(36);
+  }
+
+  function 추가하기(내용) {
+    const 정리 = 내용.trim();
+    if (!정리) return false;
+    할일들.push({ id: 새아이디(), text: 정리, category: "업무", done: false, createdAt: Date.now() });
+    변경됨();
+    return true;
+  }
+
+  function 삭제하기(아이디) {
+    if (!confirm("이 할 일을 삭제할까요?")) return;
+    할일들 = 할일들.filter(x => x.id !== 아이디);
+    변경됨();
+  }
+
+  function 완료바꾸기(아이디) {
+    const 항목 = 할일들.find(x => x.id === 아이디);
+    if (!항목) return;
+    항목.done = !항목.done;
+    변경됨();
+  }
+
+  function 변경됨() {
+    저장하기();
+    그리기();
+  }
 
   // ---------- 3. 화면 그리기 ----------
   // 사용자 입력은 textContent 로만 넣는다.
@@ -163,11 +196,33 @@
     목록.replaceChildren();
     if (할일들.length === 0) {
       목록.appendChild(만들기("li", { class: "빈목록" }, "할 일이 없습니다"));
+      return;
     }
+    for (const 항목 of 할일들) 목록.appendChild(보기줄만들기(항목));
+  }
+
+  function 보기줄만들기(항목) {
+    const 줄 = 만들기("li", { class: "항목" + (항목.done ? " 완료" : "") });
+
+    const 체크 = 만들기("input", { type: "checkbox", "aria-label": "완료 표시" });
+    체크.checked = 항목.done;
+    체크.addEventListener("change", () => 완료바꾸기(항목.id));
+
+    const 내용 = 만들기("span", { class: "내용" }, 항목.text);
+    const 삭제 = 만들기("button", { type: "button", class: "보조", "aria-label": "삭제" }, "삭제");
+    삭제.addEventListener("click", () => 삭제하기(항목.id));
+
+    줄.append(체크, 내용, 삭제);
+    return 줄;
   }
 
   // ---------- 4. 이벤트 연결 ----------
-  // (다음 단계에서 채운다)
+  document.getElementById("입력폼").addEventListener("submit", (이벤트) => {
+    이벤트.preventDefault();
+    const 입력 = document.getElementById("새내용");
+    if (추가하기(입력.value)) 입력.value = "";
+    입력.focus();
+  });
 
   그리기();
 </script>
