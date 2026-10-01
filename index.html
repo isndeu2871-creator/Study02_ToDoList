@@ -16,6 +16,15 @@
     --개인: #e8833a;
     --공부: #2fa56b;
   }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --배경: #14161c;
+      --카드: #1d2029;
+      --글자: #e8eaf0;
+      --흐린글자: #7d8396;
+      --선: #2b2f3b;
+    }
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
@@ -121,6 +130,7 @@
 
   <section class="카드" aria-label="할 일 목록">
     <ul id="목록"></ul>
+    <div class="아래줄"><button type="button" class="보조" id="완료삭제">완료 항목 지우기</button></div>
   </section>
 </main>
 
@@ -199,6 +209,15 @@
     const 항목 = 할일들.find(x => x.id === 아이디);
     if (!항목) return;
     항목.done = !항목.done;
+    변경됨();
+  }
+
+  function 완료지우기() {
+    const 개수 = 할일들.filter(x => x.done).length;
+    if (개수 === 0) return;
+    if (!confirm(`완료한 ${개수}개를 지울까요?`)) return;
+    할일들 = 할일들.filter(x => !x.done);
+    if (!할일들.some(x => x.id === 수정중아이디)) 수정중아이디 = null;
     변경됨();
   }
 
@@ -331,6 +350,8 @@
   // ---------- 4. 이벤트 연결 ----------
   const 새분류칸 = document.getElementById("새분류");
   for (const 분류 of 분류들) 새분류칸.appendChild(만들기("option", { value: 분류 }, 분류));
+
+  document.getElementById("완료삭제").addEventListener("click", 완료지우기);
 
   document.getElementById("입력폼").addEventListener("submit", (이벤트) => {
     이벤트.preventDefault();
